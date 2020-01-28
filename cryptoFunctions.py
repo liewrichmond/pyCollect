@@ -20,6 +20,18 @@ def encrypt(username, password, masterPw):
     salt = os.urandom(16)
     salt = b64encode(salt)
 
+    f = generateKey(salt, masterPw)
+    
+    encUsername = f.encrypt(username)
+    encPassword = f.encrypt(password)
+
+    return  {
+        'username': encUsername.decode("utf-8"),
+        'password': encPassword.decode("utf-8"),
+        'salt': salt.decode()
+    }
+
+def generateKey(salt, masterPw):
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256,
         length=32, salt=salt,
@@ -27,30 +39,39 @@ def encrypt(username, password, masterPw):
         backend=default_backend()
         )
     key = base64.urlsafe_b64encode(kdf.derive(masterPw))
-
-    #encode
     f = Fernet(key)
-    encUsername = f.encrypt(username)
-    encPassword = f.encrypt(password)
+    return f
 
+def saveConfigFile(configData, configFilename):
     #store into yaml
-    stream = open('config.yaml', 'w')
-    yamlOutput = {
-        'username': encUsername.decode("utf-8"),
-        'password': encPassword.decode("utf-8"),
-        'salt': salt.decode()
-    }
-    dump(yamlOutput, stream)
+    stream = open(configFilename, 'w')
+    dump(configData, stream)
 
-def decrypt(masterPw):
-    stream = open('config.yaml', 'r')
+def decrypt(configFilename, masterPw):
+    masterPw = masterPw.encode("utf-8")
+    stream = open(configFilename, 'r')
+    
     data = yaml.load(stream, Loader=yaml.FullLoader)
-    print(data['username'])
+    username = data['username']
+    password = data['password']
+
+    #get the salt
+    salt = data['salt']
+    salt = salt.encode()
+
+    f = generateKey(salt, masterPw)
+    username = f.decrypt(username.encode("utf-8"))
+    password = f.decrypt(password.encode("utf-8"))
+    return {
+        'username': username.decode("utf-8"),
+        'password': password.decode("utf-8")
+    }
 
 if __name__ == "__main__":
     #prompt user for settings
     username = input("Enter Username:")
     password = input("Enter Password:")
     masterPw = input("Set Master Password:")
-    encrypt(username, password, masterPw)
-    decrypt(masterPw)
+    encryptedData = encrypt(username, password, masterPw)
+    saveConfigFile(encryptedData, "config.yaml")
+    decrypt("config.yaml", masterPw)

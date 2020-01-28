@@ -47,10 +47,10 @@ def saveConfigFile(configData, configFilename):
     stream = open(configFilename, 'w')
     dump(configData, stream)
 
-def decrypt(configFilename, masterPw):
+def _decrypt(configFilename, masterPw):
     masterPw = masterPw.encode("utf-8")
+
     stream = open(configFilename, 'r')
-    
     data = yaml.load(stream, Loader=yaml.FullLoader)
     username = data['username']
     password = data['password']
@@ -67,11 +67,14 @@ def decrypt(configFilename, masterPw):
         'password': password.decode("utf-8")
     }
 
+def decrypt(masterPw):
+    return _decrypt("config.yaml", masterPw)
+
+
 if __name__ == "__main__":
     #prompt user for settings
     username = input("Enter Username:")
     password = input("Enter Password:")
     masterPw = input("Set Master Password:")
     encryptedData = encrypt(username, password, masterPw)
-    saveConfigFile(encryptedData, "config.yaml")
-    decrypt("config.yaml", masterPw)
+    decrypt(masterPw)
